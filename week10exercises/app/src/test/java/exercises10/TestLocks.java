@@ -35,8 +35,69 @@ public class TestLocks {
     // The imports above are just for convenience, feel free add or remove imports
     
     // TODO: 10.2.5
+    @Test
+    public void TestLocksForSingleThread(){
+        ReadWriteCASLock lock = new ReadWriteCASLock();
 
-    // TODO: 10.2.6   
+        try{
+            assertTrue(lock.writerTryLock());
+            assertFalse(lock.readerTryLock());
+            assertFalse(lock.writerTryLock());
+
+            lock.writerUnlock();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        try{
+            assertTrue(lock.readerTryLock());
+            assertFalse(lock.writerTryLock());
+            assertTrue(lock.readerTryLock());
+
+            lock.readerUnlock();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        assertThrows(Exception.class, ()->lock.writerUnlock());
+        assertThrows(Exception.class, ()-> lock.readerUnlock());
+    }
+
+    // TODO: 10.2.6
+    @Test
+    public void TestLocksForParallel() throws BrokenBarrierException, InterruptedException {
+        ReadWriteCASLock lock = new ReadWriteCASLock();
+        int nThreads = 4;
+        AtomicInteger Writers = new AtomicInteger(0);
+        AtomicBoolean success = new AtomicBoolean(true);
+        CyclicBarrier barrier = new CyclicBarrier(5);
+
+        for (int i = 1; i < nThreads+1; i++) {
+            new Thread(() -> {
+                try {
+                    barrier.await();
+                    for (int j = 0; j < 100; j++) {
+                        if (lock.writerTryLock()) {
+                            assertTrue(Writers.incrementAndGet() <= 1);Writers.decrementAndGet();lock.writerUnlock();
+                        };
+                    }
+
+                    barrier.await();
+                } catch (Exception e) {
+                    success.set(false);
+                }
+            }).start();
+        }
+        try {
+            barrier.await();
+            barrier.await();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (BrokenBarrierException e) {
+            e.printStackTrace();
+        }
+        assertTrue(success.get() == true && Writers.get() == 0);
+    }
 
 }
 
