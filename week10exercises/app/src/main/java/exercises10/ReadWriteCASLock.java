@@ -27,11 +27,15 @@ class ReadWriteCASLock implements SimpleRWTryLockInterface {
 
     public void readerUnlock() {
     // TODO 7.2.4
-    Holders cur = holders.get();
-    if (cur != null && cur.getClass() == ReaderList.class && !((ReaderList) cur).contains(Thread.currentThread())) {
-            throw new RuntimeException("Not lock holder!");
+        Holders cur = holders.get();
+        if (cur != null && cur.getClass() == ReaderList.class && !((ReaderList) cur).contains(Thread.currentThread())) {
+                throw new RuntimeException("Not lock holder!");
+        }
+        while (!holders.compareAndSet(cur, ((ReaderList) cur).remove(Thread.currentThread()))) {
+            cur = holders.get();
         }
     }
+
 
     public boolean writerTryLock() {
 	// TODO 7.2.1
@@ -42,8 +46,11 @@ class ReadWriteCASLock implements SimpleRWTryLockInterface {
     // TODO 7.2.2
         Holders cur = holders.get();
         final Thread curThread = Thread.currentThread();
-        if (cur.thread.equals(curThread))
-	        throw new RuntimeException("Not lock holder");
+        if (curThread.equals(cur.thread)){
+            holders.compareAndSet(cur, null);
+        }else {
+            throw new RuntimeException("Not lock holder");
+        }
     }
 
 
@@ -87,15 +94,17 @@ class ReadWriteCASLock implements SimpleRWTryLockInterface {
         }
 
     // TODO: remove
-        // public ReaderList remove(Thread t){
-        //     // ReaderList cur = this;
-        //     // ReaderList prev = null;
-        //     // while(cur != null){
-        //     //     if (cur.thread == t){
-                    
-        //     //     }
-        //     // }
-        // }
+         public ReaderList remove(Thread t){
+            ReaderList res = null;
+            ReaderList cur = this;
+            while (cur != null){
+                if (cur.thread != t){
+                    res = new ReaderList(cur.thread, res);
+                }
+                cur = cur.next;
+            }
+            return res;
+         }
     }
 
     private static class Writer extends Holders {
