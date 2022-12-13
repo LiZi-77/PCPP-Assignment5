@@ -1,10 +1,10 @@
 package exercises10;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class CasHistogram implements Histogram{
+public class CasHistogram implements Histogram {
     AtomicInteger[] counts;
 
-    public CasHistogram(int span){
+    public CasHistogram(int span) {
         this.counts = new AtomicInteger[span];
         for (int i = 0; i < span; i++) {
             counts[i] = new AtomicInteger(0);
@@ -15,11 +15,12 @@ public class CasHistogram implements Histogram{
     public void increment(int bin) {
         AtomicInteger old;
         int oldValue, newValue;
+
         do {
             old = counts[bin];
             oldValue = old.get();
             newValue = oldValue + 1;
-        }while(old.compareAndSet(newValue, oldValue));
+        } while (!old.compareAndSet(oldValue, newValue));
     }
 
     @Override
@@ -34,13 +35,13 @@ public class CasHistogram implements Histogram{
 
     @Override
     public int getAndClear(int bin) {
-        AtomicInteger cur;
-        int curValue;
-        cur = counts[bin];
-        curValue = cur.get();
-        while(cur.compareAndSet(curValue, 0)){
+        var cur = counts[bin];
+        var curValue = cur.get();
+        while (!cur.compareAndSet(curValue, 0)) {
             curValue = cur.get();
         }
         return curValue;
+
     }
+
 }
